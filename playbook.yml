@@ -1,0 +1,11 @@
+- name: Demo
+  hosts: all
+
+  roles:
+    # - base
+    # - firewall
+    # - mosh
+    # - wireguard
+    # - gitolite
+    - mail
+    - nginx

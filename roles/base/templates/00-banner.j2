@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# {{ ansible_managed }}
+
+# The single quotes are required to escape any ` that could appear in the banner
+cat <<'EOF'
+{{ motd.stdout }}
+EOF

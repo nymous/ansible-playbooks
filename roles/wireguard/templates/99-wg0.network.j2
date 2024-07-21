@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+
+[Match]
+Name=wg0
+
+[Network]
+{% for address in wireguard.addresses %}
+Address={{ address }}
+{% endfor %}

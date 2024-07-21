@@ -1,0 +1,31 @@
+# https://gitolite.com/gitolite/index.html
+
+# Template with keys and values types is at /var/lib/dpkg/info/gitolite3.templates
+# You can use `debconf-show gitolite3` to list keys
+# http://www.fifi.org/doc/debconf-doc/tutorial.html
+- name: Prepare gitolite3 configuration - gituser
+  become: true
+  ansible.builtin.debconf:
+    name: gitolite3
+    question: gitolite3/gituser
+    value: "git"
+    vtype: string
+
+- name: Prepare gitolite3 configuration - adminkey
+  become: true
+  ansible.builtin.debconf:
+    name: gitolite3
+    question: gitolite3/adminkey
+    value: "{{ lookup('ansible.builtin.file', '~/.ssh/id_ed25519.pub') }}"
+    vtype: string
+
+- name: Install gitolite3
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    name: gitolite3
+    state: present
+
+# * gitolite3/gituser: gitolite3
+# * gitolite3/adminkey:
+# * gitolite3/gitdir: /var/lib/gitolite3

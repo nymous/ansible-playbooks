@@ -1,0 +1,19 @@
+- name: Install ufw
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - ufw
+    state: present
+
+- name: Allow OpenSSH
+  become: true
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+
+- name: Enable ufw
+  become: true
+  community.general.ufw:
+    state: enabled
+    policy: deny

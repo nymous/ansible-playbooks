@@ -1,0 +1,13 @@
+- name: Install mosh
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    name: mosh
+    state: present
+
+- name: Allow mosh in firewall
+  become: true
+  community.general.ufw:
+    rule: allow
+    name: mosh
+  notify: "Reload UFW"

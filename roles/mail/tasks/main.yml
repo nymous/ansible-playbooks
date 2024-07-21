@@ -1,0 +1,73 @@
+# Template with keys and values types is at /var/lib/dpkg/info/postfix.templates
+# You can use `debconf-show postfix` to list keys
+# http://www.fifi.org/doc/debconf-doc/tutorial.html
+- name: Prepare postfix configuration - mailer type
+  become: true
+  ansible.builtin.debconf:
+    name: postfix
+    question: postfix/main_mailer_type
+    value: "Internet Site"
+    vtype: string
+
+- name: Prepare postfix configuration - mailname
+  become: true
+  ansible.builtin.debconf:
+    name: postfix
+    question: postfix/mailname
+    value: "{{ smtp.mail_name }}"
+    vtype: string
+
+- name: Prepare postfix configuration - relayhost
+  become: true
+  ansible.builtin.debconf:
+    name: postfix
+    question: postfix/relayhost
+    value: "{{ smtp.relay_host }}"
+    vtype: string
+
+- name: Install postfix and mail command
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - libsasl2-modules # Required for relayhost authentication
+      - postfix
+      - bsd-mailx
+    state: present
+
+# https://www.cyberciti.biz/faq/how-to-configure-postfix-relayhost-smarthost-to-send-email-using-an-external-smptd/
+- name: Configure Postfix relayhost authentication
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/postfix/main.cf
+    marker: "# {mark} ANSIBLE POSTFIX SMTP AUTHENTICATION"
+    prepend_newline: true
+    append_newline: true
+    block: |
+      # Enable auth
+      smtp_sasl_auth_enable = yes
+
+      # Set username and password
+      smtp_sasl_password_maps = static:{{ smtp.relay_user }}:{{ smtp.relay_password }}
+      smtp_sasl_security_options = noanonymous
+  notify: "Reload Postfix"
+
+- name: Configure Postfix TLS
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postfix/main.cf
+    regexp: "smtp_tls_security_level ?="
+    line: "smtp_tls_security_level = encrypt"
+  notify: "Reload Postfix"
+
+- name: Configure Postfix myhostname
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postfix/main.cf
+    regexp: "myhostname ?="
+    line: "myhostname = {{ smtp.hostname }}"
+  notify: "Reload Postfix"
+
+# * postfix/main_mailer_type: Internet Site
+# * postfix/mailname: domain.tld
+# * postfix/relayhost:

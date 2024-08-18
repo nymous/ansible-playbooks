@@ -7,5 +7,6 @@
     # - mosh
     # - wireguard
     # - gitolite
-    - mail
-    - nginx
+    # - mail
+    - certbot
+    # - nginx

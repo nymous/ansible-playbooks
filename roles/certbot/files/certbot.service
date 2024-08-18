@@ -1,0 +1,32 @@
+# Copied and enhanced from Debian certbot package
+[Unit]
+Description=Certbot
+Documentation=https://certbot.eff.org/docs
+
+[Service]
+Type=oneshot
+User=certbot
+Group=certbot
+ExecStart=/home/certbot/certbot_venv/bin/certbot --quiet renew --no-random-sleep-on-renew
+PrivateTmp=true
+
+# More secure options not present in Debian service
+NoNewPrivileges=true
+#PrivateNetwork=true
+PrivateDevices=true
+PrivateMounts=true
+PrivateUsers=true
+ProtectHome=tmpfs
+BindReadOnlyPaths=/home/certbot/certbot_venv
+ProtectSystem=strict
+ReadWritePaths=/etc/letsencrypt
+ReadWritePaths=/var/log/letsencrypt
+ReadWritePaths=/var/lib/letsencrypt
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+CapabilityBoundingSet=
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible

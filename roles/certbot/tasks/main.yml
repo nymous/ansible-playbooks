@@ -1,0 +1,190 @@
+- name: Create certbot user
+  ansible.builtin.user:
+    name: certbot
+    password: '!' # Lock/disable password
+    shell: /sbin/nologin
+    system: true
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+    ssh_key_file: .ssh/id_ed25519_github_ansible_playbooks
+  become: true
+  register: cerbot_user
+
+- name: Print generated SSH public key
+  ansible.builtin.debug:
+    var: cerbot_user.ssh_public_key
+
+- name: Install python3-venv
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - python3-venv
+    state: present
+  become: true
+
+- name: Prepare Certbot directories and configuration
+  become: true
+  block:
+    - name: Create Certbot log directory
+      ansible.builtin.file:
+        path: /var/log/letsencrypt
+        state: directory
+        owner: certbot
+        group: certbot
+        mode: "700"
+
+    - name: Create Certbot config directory
+      ansible.builtin.file:
+        path: /etc/letsencrypt
+        state: directory
+        owner: certbot
+        group: certbot
+        mode: "755"
+
+    - name: Create Certbot certs live directory
+      ansible.builtin.file:
+        path: /etc/letsencrypt/live
+        state: directory
+        owner: certbot
+        group: certbot
+        mode: "755"
+
+    - name: Create Certbot certs archive directory
+      ansible.builtin.file:
+        path: /etc/letsencrypt/archive
+        state: directory
+        owner: certbot
+        group: certbot
+        mode: "755"
+
+    - name: Create Certbot work directory
+      ansible.builtin.file:
+        path: /var/lib/letsencrypt
+        state: directory
+        owner: certbot
+        group: certbot
+        mode: "755"
+
+    - name: Configure Certbot CLI
+      ansible.builtin.copy:
+        src: certbot_cli.ini
+        dest: /etc/letsencrypt/cli.ini
+        owner: certbot
+        group: certbot
+        mode: "600"
+
+- name: Add logrotate conf for Certbot logs
+  ansible.builtin.copy:
+    src: logrotate_certbot
+    dest: /etc/logrotate.d/certbot
+    mode: "644"
+  become: true
+
+- name: Install Certbot renew systemd-service
+  ansible.builtin.copy:
+    src: certbot.service
+    dest: /etc/systemd/system/certbot.service
+    owner: root
+    group: root
+    mode: "644"
+  become: true
+  notify: Reload systemd
+
+- name: Install Certbot renew systemd-timer
+  ansible.builtin.copy:
+    src: certbot.timer
+    dest: /etc/systemd/system/certbot.timer
+    owner: root
+    group: root
+    mode: "644"
+  become: true
+
+#########################
+#    WORK AS CERTBOT    #
+#########################
+- name: Work as certbot user
+  become: true
+  become_user: certbot
+  block:
+    - name: Trust GitHub public keys
+      ansible.builtin.copy:
+        src: known_hosts
+        dest: /home/certbot/.ssh/known_hosts
+        mode: "600"
+
+    - name: Copy .ssh/config
+      ansible.builtin.copy:
+        src: ssh_config
+        dest: /home/certbot/.ssh/config
+        mode: "600"
+
+    - name: Install Certbot and Alwaysdata DNS plugin
+      ansible.builtin.pip:
+        virtualenv: /home/certbot/certbot_venv
+        virtualenv_command: "python3 -m venv"
+        name:
+          - certbot
+          - git+ssh://git@github.com/nymous/ansible-playbooks#subdirectory=certbot-dns-alwaysdata
+        state: latest # noqa: package-latest
+
+    - name: Copy Alwaysdata credentials
+      ansible.builtin.template:
+        src: alwaysdata_credentials.ini
+        dest: /home/certbot/alwaysdata_credentials.ini
+        mode: "600"
+
+    # Inspired by https://git.kabelsalat.ch/s3lph/ansible-collection-webserver
+    - name: Generate first certificate
+      ansible.builtin.command:
+        cmd: >-
+          /home/certbot/certbot_venv/bin/certbot certonly
+            --non-interactive
+            --agree-tos
+            {% if certbot.test_cert %}
+            --test-cert
+            {% endif %}
+            --email={{ admin_email | quote }}
+            --no-eff-email
+            --cert-name={{ cert_name | quote }}
+            {% for domain in cert.domains %}
+            --domain={{ domain | quote }}
+            {% endfor %}
+            --authenticator=dns-alwaysdata
+            --dns-alwaysdata-credentials=/home/certbot/alwaysdata_credentials.ini
+            --strict-permissions
+      vars:
+        cert_name: "{{ item.key }}"
+        cert: "{{ item.value }}"
+      loop: "{{ certbot.certificates | dict2items }}"
+      register: certbot_certonly
+      # Changed if command exits with != 0 or if we don't see "no action taken" in output
+      changed_when: (certbot_certonly.rc != 0) or ("no action taken" not in certbot_certonly.stdout)
+
+    # During a loop, the "registered" variable contains the output of the current execution of the loop,
+    # and once the loop is finished, the "registered" variable contains a "results" attribute with a list
+    # of all outputs of the step.
+    # See https://stackoverflow.com/a/72595190
+    # Below are some example of how you can check the aggregated list if needed.
+
+    # Changed when we don't have as many 0 exit codes as the commands we ran,
+    # OR
+    # we don't have as many "no action taken" stdout as the commands we ran.
+    # - name: Debug
+    #   ansible.builtin.debug:
+    #     var: (certbot_certonly.results | map(attribute="rc") | select("eq", 0) | count) == (certbot_certonly.results | count)
+
+    # - name: Debug
+    #   ansible.builtin.debug:
+    #     var: (certbot_certonly.results | map(attribute="stdout") | select("contains", "no action taken") | count)  == (certbot_certonly.results | count)
+    # The Jinja builtin test "in" works in the opposite way from what we need, it checks if the value passed
+    # to the test is in "no action taken". Ansible added a custom "contains" test to check if the value passed
+    # contains "no action taken".
+    # See https://github.com/pallets/jinja/issues/1766
+
+- name: Enable Certbot renew systemd-timer
+  ansible.builtin.systemd_service:
+    name: certbot.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+  become: true

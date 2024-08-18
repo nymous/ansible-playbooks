@@ -29,6 +29,8 @@
       - iotop
       - dnsutils
       - needrestart
+      - acl # Useful to `become` another unprivileged user
+      - logrotate
     state: present
 
 - name: "Configure unattended-upgrades"

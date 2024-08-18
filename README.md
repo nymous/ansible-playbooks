@@ -25,10 +25,12 @@ passwd
 - [x] Wireguard
 - [x] Gitolite
 - [ ] Fail2ban
+- [x] Certbot
 - [ ] Nginx
 - [ ] HAProxy?
 - [ ] Netdata
 - [ ] Borg Backup
+- [ ] PostgreSQL
 - [ ] Nextcloud
 - [ ] Jackett
 - [ ] Atuin server

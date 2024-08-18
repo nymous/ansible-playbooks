@@ -1,4 +1,5 @@
 - name: Create certbot user
+  become: true
   ansible.builtin.user:
     name: certbot
     password: '!' # Lock/disable password
@@ -7,7 +8,6 @@
     generate_ssh_key: true
     ssh_key_type: ed25519
     ssh_key_file: .ssh/id_ed25519_github_ansible_playbooks
-  become: true
   register: cerbot_user
 
 - name: Print generated SSH public key
@@ -15,12 +15,12 @@
     var: cerbot_user.ssh_public_key
 
 - name: Install python3-venv
+  become: true
   ansible.builtin.apt:
     update_cache: true
     name:
       - python3-venv
     state: present
-  become: true
 
 - name: Prepare Certbot directories and configuration
   become: true
@@ -74,30 +74,30 @@
         mode: "600"
 
 - name: Add logrotate conf for Certbot logs
+  become: true
   ansible.builtin.copy:
     src: logrotate_certbot
     dest: /etc/logrotate.d/certbot
     mode: "644"
-  become: true
 
 - name: Install Certbot renew systemd-service
+  become: true
   ansible.builtin.copy:
     src: certbot.service
     dest: /etc/systemd/system/certbot.service
     owner: root
     group: root
     mode: "644"
-  become: true
   notify: Reload systemd
 
 - name: Install Certbot renew systemd-timer
+  become: true
   ansible.builtin.copy:
     src: certbot.timer
     dest: /etc/systemd/system/certbot.timer
     owner: root
     group: root
     mode: "644"
-  become: true
 
 #########################
 #    WORK AS CERTBOT    #
@@ -182,9 +182,9 @@
     # See https://github.com/pallets/jinja/issues/1766
 
 - name: Enable Certbot renew systemd-timer
+  become: true
   ansible.builtin.systemd_service:
     name: certbot.timer
     state: started
     enabled: true
     daemon_reload: true
-  become: true

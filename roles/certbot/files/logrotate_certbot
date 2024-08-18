@@ -1,3 +1,5 @@
+# Ansible managed
+
 # https://community.letsencrypt.org/t/log-rotation-configuration/108596
 /var/log/letsencrypt/*.log {
     rotate 12

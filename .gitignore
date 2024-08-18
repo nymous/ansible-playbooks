@@ -2,3 +2,5 @@ hosts
 hosts.yml
 host_vars/*
 .venv
+out/
+overview.html

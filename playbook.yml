@@ -8,5 +8,5 @@
     # - wireguard
     # - gitolite
     # - mail
-    - certbot
-    # - nginx
+    # - certbot
+    - nginx

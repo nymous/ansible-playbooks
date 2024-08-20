@@ -26,7 +26,7 @@ passwd
 - [x] Gitolite
 - [ ] Fail2ban
 - [x] Certbot
-- [ ] Nginx
+- [x] Nginx
 - [ ] HAProxy?
 - [ ] Netdata
 - [ ] Borg Backup

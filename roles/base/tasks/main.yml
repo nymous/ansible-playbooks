@@ -81,3 +81,10 @@
     dest: /etc/update-motd.d/00-banner
     mode: "755"
   when: not motd.failed
+
+- name: "Add SSH authorized keys for nymous"
+  ansible.posix.authorized_key:
+    user: nymous
+    key: "{{ item }}"
+    state: present
+  loop: "{{ ssh_authorized_keys }}"

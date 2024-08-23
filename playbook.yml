@@ -9,4 +9,5 @@
     # - gitolite
     # - mail
     # - certbot
-    - nginx
+    # - nginx
+    - postgresql

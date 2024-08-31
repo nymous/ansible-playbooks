@@ -2,7 +2,9 @@
   become: true
   ansible.builtin.apt:
     update_cache: true
-    name: mosh
+    cache_valid_time: 3600
+    name:
+      - mosh
     state: present
 
 - name: Allow mosh in firewall

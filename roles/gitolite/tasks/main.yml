@@ -23,7 +23,9 @@
   become: true
   ansible.builtin.apt:
     update_cache: true
-    name: gitolite3
+    cache_valid_time: 3600
+    name:
+      - gitolite3
     state: present
 
 # * gitolite3/gituser: gitolite3

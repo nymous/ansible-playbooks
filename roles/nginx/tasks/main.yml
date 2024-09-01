@@ -21,7 +21,7 @@
     - name: Copy Nginx config
       become: true
       ansible.builtin.copy:
-        src: nginx/{{ item }}
+        src: "{{ item }}"
         dest: /etc/nginx/{{ item }}
         owner: root
         group: root

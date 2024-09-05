@@ -62,6 +62,12 @@
       loop: "{{ config_files.results }}"
       when: item is changed # noqa: no-handler
 
+- name: Disable default Nginx vhost
+  become: true
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
 - name: Allow Nginx in firewall
   become: true
   community.general.ufw:

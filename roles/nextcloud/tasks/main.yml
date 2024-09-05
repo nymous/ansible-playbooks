@@ -1,0 +1,12 @@
+- name: Create Nextcloud user
+  become: true
+  ansible.builtin.user:
+    name: nextcloud
+    password: '!' # Lock/disable password
+    shell: /sbin/nologin
+    system: true
+
+- name: Copy files
+  ansible.builtin.copy:
+    src: phpinfo.php
+    dest: /home/nextcloud/phpinfo.php

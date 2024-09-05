@@ -10,4 +10,5 @@
     # - mail
     # - certbot
     # - nginx
-    - postgresql
+    # - postgresql
+    - php

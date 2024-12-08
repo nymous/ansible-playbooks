@@ -1,0 +1,22 @@
+nextcloud_version: 29.0.6
+nextcloud_archive_checksum: sha256:dc60be03fd17e30bafef2a4d4feb2d096aa77a4c6b4f21c985760e537f8401e3 # 29.0.6
+nextcloud_php_version: 8.3
+nextcloud_first_install: false
+# nextcloud_hostname:
+# nextcloud_db_password:
+
+nextcloud_config_directory: /etc/nextcloud
+nextcloud_code_directory: /var/www/nextcloud
+nextcloud_lib_directory: /var/lib/nextcloud
+nextcloud_data_directory: "{{ nextcloud_lib_directory }}/data"
+nextcloud_apps_directory: "{{ nextcloud_lib_directory }}/apps"
+nextcloud_log_directory: /var/log/nextcloud
+
+nextcloud_archive_download_url: https://download.nextcloud.com/server/releases/nextcloud-{{ nextcloud_version }}.tar.bz2
+nextcloud_pfp_fpm_pool_conf_path: /etc/php/{{ nextcloud_php_version }}/fpm/pool.d/nextcloud.conf
+nextcloud_runtime_directory: php{{ nextcloud_php_version }}-fpm-nextcloud
+nextcloud_php_fpm_socket: /var/run/{{ nextcloud_runtime_directory }}/php{{ nextcloud_php_version }}-fpm-nextcloud.sock
+nextcloud_php_memory_limit: 128M
+nextcloud_max_upload_size: 4G
+
+nextcloud_extra_apps_url: extra-apps

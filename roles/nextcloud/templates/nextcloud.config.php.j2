@@ -1,0 +1,57 @@
+<?php
+$CONFIG = array (
+  'instanceid' => 'a',
+  'passwordsalt' => 'a',
+  'secret' => 'a',
+  'trusted_domains' =>
+  array (
+    0 => 'nextcloud.example.com',
+  ),
+  'htaccess.RewriteBase' => '/',
+  'datadirectory' => '{{ nextcloud_data_directory }}',
+  'logfile' => '{{ nextcloud_log_directory }}/nextcloud.log',
+  'dbtype' => 'pgsql',
+  'version' => '29.0.6.1',
+  'overwrite.cli.url' => 'https://nextcloud.example.com',
+  'dbname' => 'nextcloud',
+  'dbhost' => '/run/postgresql',
+  'dbtableprefix' => 'oc_',
+  'dbuser' => 'nextcloud',
+  'dbpassword' => '{{ nextcloud_db_password }}',
+  'apps_paths' => [
+    [
+      'path'=> '{{ nextcloud_code_directory }}/apps',
+      'url' => '/apps',
+      'writable' => false,
+    ],
+    [
+      'path'=> '{{ nextcloud_apps_directory }}',
+      'url' => '/{{ nextcloud_extra_apps_url }}',
+      'writable' => true,
+    ],
+  ],
+);
+
+
+/*
+<?php
+$CONFIG = array (
+  'instanceid' => 'a',
+  'passwordsalt' => 'a',
+  'secret' => 'a',
+  'trusted_domains' =>
+  array (
+    0 => 'nextcloud.example.com',
+  ),
+  'datadirectory' => '/var/lib/nextcloud/data/data',
+  'dbtype' => 'pgsql',
+  'version' => '29.0.6.1',
+  'overwrite.cli.url' => 'https://nextcloud.example.com',
+  'dbname' => 'nextcloud',
+  'dbhost' => 'localhost',
+  'dbport' => '',
+  'dbtableprefix' => 'oc_',
+  'dbuser' => 'admin',
+  'dbpassword' => 'password',
+);
+*/

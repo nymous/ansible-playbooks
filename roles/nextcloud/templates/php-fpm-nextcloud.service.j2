@@ -1,0 +1,46 @@
+[Unit]
+Description=The PHP {{ nextcloud_php_version }} FastCGI Process Manager - Nextcloud pool
+Documentation=man:php-fpm{{ nextcloud_php_version }}(8)
+After=network.target
+
+[Service]
+Type=notify
+User=nextcloud
+Group=nextcloud
+RuntimeDirectory={{ nextcloud_runtime_directory }}
+ExecStart=/usr/sbin/php-fpm{{ nextcloud_php_version }} --nodaemonize --fpm-config /etc/php/{{ nextcloud_php_version }}/fpm/pool.d/nextcloud.conf
+ExecReload=/bin/kill -USR2 $MAINPID
+Restart=on-failure
+
+# Inspired by https://github.com/php/php-src/blob/master/sapi/fpm/php-fpm.service.in and extended
+
+CapabilityBoundingSet=
+LockPersonality=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateMounts=true
+PrivateTmp=true
+# TODO: PrivateUsers=true prevents php-fpm to chown the socket to www-data
+PrivateUsers=false
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+BindReadOnlyPaths={{ nextcloud_code_directory }}
+ReadWritePaths={{ nextcloud_config_directory }}
+ReadWritePaths={{ nextcloud_data_directory }}
+ReadWritePaths={{ nextcloud_apps_directory }}
+ReadWritePaths=/run/postgresql
+ReadWritePaths=/var/lib/php/sessions
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

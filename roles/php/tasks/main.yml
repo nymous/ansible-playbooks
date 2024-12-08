@@ -39,3 +39,34 @@
     search_string: date.timezone =
     line: date.timezone = Etc/UTC
   loop: "{{ php_versions | product(['fpm', 'cli']) | list }}"
+
+- name: Disable PHP X-Powered-By leak
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/php/{{ item }}/fpm/php.ini
+    search_string: expose_php =
+    line: expose_php = Off
+  loop: "{{ php_versions }}"
+
+- name: Disable default pool service
+  become: true
+  ansible.builtin.systemd_service:
+    name: php{{ item }}-fpm.service
+    state: stopped
+    enabled: false
+    masked: true
+  loop: "{{ php_versions }}"
+
+# https://albert.cx/20181125-use-separate-systemd-units-for-php-fpm-pools
+# - name: Copy PHP-FPM per-pool template systemd service
+#   become: true
+#   ansible.builtin.template:
+#     src: php-fpm.service.j2
+#     dest: /etc/systemd/system/php{{ php_version }}-fpm@.service
+#     owner: root
+#     group: root
+#     mode: "644"
+#   notify: Reload systemd
+#   loop: "{{ php_versions }}"
+#   loop_control:
+#     loop_var: php_version

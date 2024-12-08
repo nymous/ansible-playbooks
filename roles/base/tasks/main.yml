@@ -32,6 +32,8 @@
       - needrestart
       - acl # Useful to `become` another unprivileged user
       - logrotate
+      - lbzip2 # To decompress bz2 archives
+      - python3-psycopg2 # To manage PostgreSQL using Ansible
     state: present
 
 - name: "Configure unattended-upgrades"

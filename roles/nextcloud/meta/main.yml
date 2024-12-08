@@ -1,3 +1,7 @@
 dependencies:
-  - nginx
-  - php
+  # - nginx
+  # - postgresql
+  - role: php
+    vars:
+      php_versions:
+        - "{{ nextcloud_php_version }}"

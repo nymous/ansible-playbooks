@@ -5,8 +5,222 @@
     password: '!' # Lock/disable password
     shell: /sbin/nologin
     system: true
+    create_home: false
+    groups:
+      - www-data
 
-- name: Copy files
+- name: Install missing PHP extensions and tools
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - lbzip2 # To decompress Nextcloud bz2 archive
+      - python3-psycopg2 # To manage PostgreSQL using Ansible
+      - ffmpeg
+      - php{{ nextcloud_php_version }}-apcu
+      - php{{ nextcloud_php_version }}-curl
+      - php{{ nextcloud_php_version }}-gd
+      - php{{ nextcloud_php_version }}-imagick
+      - php{{ nextcloud_php_version }}-intl
+      - php{{ nextcloud_php_version }}-mbstring
+      - php{{ nextcloud_php_version }}-pgsql
+      - php{{ nextcloud_php_version }}-xml
+      - php{{ nextcloud_php_version }}-zip
+  notify: Reload PHP-FPM pool service
+
+- name: Copy PHP-FPM pool configuration
+  become: true
+  ansible.builtin.template:
+    src: nextcloud-pool.conf.j2
+    dest: /etc/php/{{ nextcloud_php_version }}/fpm/pool.d/nextcloud.conf
+    owner: root
+    group: root
+    mode: "644"
+  notify: Reload PHP-FPM pool service
+
+# https://albert.cx/20181125-use-separate-systemd-units-for-php-fpm-pools
+- name: Copy PHP-FPM pool systemd service
+  become: true
+  ansible.builtin.template:
+    src: php-fpm-nextcloud.service.j2
+    dest: /etc/systemd/system/php{{ nextcloud_php_version }}-fpm-nextcloud.service
+    owner: root
+    group: root
+    mode: "644"
+  notify: Reload PHP-FPM pool service
+
+- name: Start PHP-FPM pool service
+  become: true
+  ansible.builtin.systemd_service:
+    name: php{{ nextcloud_php_version }}-fpm-nextcloud.service
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Copy nginx configuration
+  become: true
+  ansible.builtin.template:
+    src: nextcloud-nginx.j2
+    dest: /etc/nginx/sites-available/nextcloud
+    owner: root
+    group: root
+    mode: "644"
+  notify: Reload nginx
+
+- name: Activate nginx configuration
+  become: true
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/nextcloud
+    dest: /etc/nginx/sites-enabled/nextcloud
+    state: link
+  notify: Reload nginx
+
+- name: Create Nextcloud directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: nextcloud
+    group: www-data
+    mode: "770"
+  loop:
+    - "{{ nextcloud_config_directory }}"
+    - "{{ nextcloud_code_directory }}"
+    - "{{ nextcloud_log_directory }}"
+    - "{{ nextcloud_lib_directory }}"
+    - "{{ nextcloud_data_directory }}"
+    - "{{ nextcloud_apps_directory }}"
+
+# - name: Copy files
+#   become: true
+#   ansible.builtin.copy:
+#     src: phpinfo.php
+#     dest: "{{ nextcloud_code_directory }}/phpinfo.php"
+#     owner: nextcloud
+#     group: www-data
+#     mode: "660"
+
+# - name: Download Nextcloud installer
+#   become: true
+#   ansible.builtin.get_url:
+#     url: https://download.nextcloud.com/server/installer/setup-nextcloud.php
+#     dest: "{{ nextcloud_data_directory }}/setup-nextcloud.php"
+#     checksum: sha256:bc841ef31635f013e2b54e335c405d4a99beab587e42f141697346aa67020459
+#     owner: nextcloud
+#     group: www-data
+#     mode: "660"
+
+# - name: Copy Nextcloud GPG key
+#   become: true
+#   ansible.builtin.file:
+#     src: nextcloud.asc
+#     dest: /tmp/nextcloud.asc
+#     owner: root
+#     group: root
+#     mode: "600"
+
+# - name: Import GPG key
+#   become: true
+#   ansible.builtin.command:
+#     cmd: gpg --import /tmp/nextcloud.asc
+
+- name: Download Nextcloud archive
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ nextcloud_archive_download_url }}"
+    dest: /tmp/nextcloud-{{ nextcloud_version }}.tar.bz2
+    checksum: "{{ nextcloud_archive_checksum }}"
+    owner: root
+    group: root
+    mode: "600"
+
+# - name: Extract Nextcloud
+#   become: true
+#   ansible.builtin.unarchive:
+#     remote_src: true
+#     src: /tmp/nextcloud-{{ nextcloud_version }}.tar.bz2
+#     dest: "{{ nextcloud_code_directory }}"
+#     owner: nextcloud
+#     group: www-data
+#     extra_opts:
+#       - --strip-components=1
+
+- name: Copy Nextcloud configuration
+  become: true
+  ansible.builtin.template:
+    src: nextcloud.config.php.j2
+    dest: "{{ nextcloud_config_directory }}/config.php"
+    owner: nextcloud
+    group: www-data
+    mode: "660"
+  notify: Reload PHP-FPM pool service
+
+- name: Retrieve Nextcloud configuration sample
+  become: true
   ansible.builtin.copy:
-    src: phpinfo.php
-    dest: /home/nextcloud/phpinfo.php
+    remote_src: true
+    src: "{{ nextcloud_code_directory }}/config/config.sample.php"
+    dest: "{{ nextcloud_config_directory }}/config.sample.php"
+    owner: nextcloud
+    group: www-data
+    mode: "644"
+
+- name: Create CAN_INSTALL file
+  become: true
+  ansible.builtin.file:
+    path: "{{ nextcloud_config_directory }}/CAN_INSTALL"
+    state: touch
+    owner: nextcloud
+    group: www-data
+    mode: "660"
+    modification_time: preserve
+    access_time: preserve
+  when: nextcloud_first_install
+
+- name: Test if Nextcloud config directory links to /etc
+  become: true
+  ansible.builtin.stat:
+    path: "{{ nextcloud_code_directory }}/config"
+  register: config_dir_stat
+
+- name: Delete existing Nextcloud config directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ nextcloud_code_directory }}/config"
+    state: absent
+  when: not (config_dir_stat.stat.islnk and config_dir_stat.stat.lnk_source == nextcloud_config_directory)
+
+- name: Link Nextcloud configuration
+  become: true
+  ansible.builtin.file:
+    src: "{{ nextcloud_config_directory }}"
+    dest: "{{ nextcloud_code_directory }}/config"
+    state: link
+    owner: nextcloud
+    group: www-data
+  when: not (config_dir_stat.stat.islnk and config_dir_stat.stat.lnk_source == nextcloud_config_directory)
+
+- name: Link Nextcloud extra apps
+  become: true
+  ansible.builtin.file:
+    src: "{{ nextcloud_apps_directory }}"
+    dest: "{{ nextcloud_code_directory }}/{{ nextcloud_extra_apps_url }}"
+    state: link
+    owner: nextcloud
+    group: www-data
+
+- name: Create Nextcloud PostgreSQL user
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: nextcloud
+    password: "{{ nextcloud_db_password }}"
+    role_attr_flags: NOSUPERUSER
+
+- name: Create Nextcloud PostgreSQL user
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: nextcloud
+    owner: nextcloud

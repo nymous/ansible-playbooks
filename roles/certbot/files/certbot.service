@@ -20,6 +20,7 @@ PrivateMounts=true
 PrivateUsers=true
 ProtectHome=tmpfs
 BindReadOnlyPaths=/home/certbot/certbot_venv
+BindReadOnlyPaths=/home/certbot/alwaysdata_credentials.ini
 ProtectSystem=strict
 ReadWritePaths=/etc/letsencrypt
 ReadWritePaths=/var/log/letsencrypt

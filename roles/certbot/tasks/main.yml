@@ -74,6 +74,14 @@
         group: certbot
         mode: "600"
 
+    - name: Copy post-deploy script to reload nginx service
+      ansible.builtin.copy:
+        src: reload-nginx.sh
+        dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+        owner: certbot
+        group: certbot
+        mode: "700"
+
 - name: Add logrotate conf for Certbot logs
   become: true
   ansible.builtin.copy:
@@ -100,6 +108,15 @@
     group: root
     mode: "644"
 
+- name: Copy Polkit rule to allow certbot user to reload nginx service
+  become: true
+  ansible.builtin.copy:
+    src: polkit.js
+    dest: /etc/polkit-1/rules.d/50-certbot-manage-nginx.rules
+    owner: root
+    group: root
+    mode: "600"
+
 #########################
 #    WORK AS CERTBOT    #
 #########################
@@ -124,7 +141,7 @@
         virtualenv: /home/certbot/certbot_venv
         virtualenv_command: "python3 -m venv"
         name:
-          - certbot
+          - certbot==3.0.1
           - git+ssh://git@github.com/nymous/ansible-playbooks#subdirectory=certbot-dns-alwaysdata
         state: latest # noqa: package-latest
 

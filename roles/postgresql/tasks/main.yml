@@ -10,7 +10,7 @@
 - name: Start PostgreSQL
   become: true
   ansible.builtin.systemd_service:
-    name: postgresql
+    name: postgresql.service
     state: started
     enabled: true
 
@@ -28,7 +28,7 @@
     - name: Stop PostgreSQL
       become: true
       ansible.builtin.systemd_service:
-        name: postgresql
+        name: postgresql.service
         state: stopped
 
     - name: Enable checksums
@@ -41,6 +41,6 @@
     - name: Start PostgreSQL
       become: true
       ansible.builtin.systemd_service:
-        name: postgresql
+        name: postgresql.service
         state: started
         enabled: true

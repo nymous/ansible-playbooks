@@ -7,11 +7,14 @@
       - nginx
     state: present
 
-- name: Generate dhparams if not already existing
+- name: Generate dhparams
   become: true
-  ansible.builtin.command:
-    cmd: openssl dhparam -out /etc/nginx/dhparams.pem 2048
-    creates: /etc/nginx/dhparams.pem
+  community.crypto.openssl_dhparam:
+    path: /etc/nginx/dhparams.pem
+    size: 2048
+    owner: root
+    group: root
+    mode: "644"
   notify: "Reload Nginx"
 
 # https://docs.ansible.com/ansible/latest/reference_appendices/faq.html#complex-configuration-validation
@@ -60,6 +63,8 @@
         path: "{{ item['backup_file'] }}"
         state: absent
       loop: "{{ config_files.results }}"
+      loop_control:
+        label: "{{ item['path'] }}"
       when: item is changed # noqa: no-handler
 
 - name: Allow Nginx in firewall

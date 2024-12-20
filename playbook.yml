@@ -11,4 +11,5 @@
     # - certbot
     # - nginx
     # - postgresql
-    - php
+    # - php
+    - nextcloud

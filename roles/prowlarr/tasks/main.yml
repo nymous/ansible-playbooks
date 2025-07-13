@@ -1,0 +1,135 @@
+- name: Install prerequisites
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - curl
+      - sqlite3
+      - python3-lxml # Needed for the xml Ansible module
+
+- name: Create prowlarr user
+  become: true
+  ansible.builtin.user:
+    name: prowlarr
+    password: '!' # Lock/disable password
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+
+- name: Create prowlarr folder
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/prowlarr
+    state: directory
+    owner: prowlarr
+    group: prowlarr
+    mode: "0700"
+
+- name: Download Prowlarr archive
+  become: true
+  ansible.builtin.get_url:
+    url: "https://github.com/Prowlarr/Prowlarr/releases/download/v{{ prowlarr_version }}/Prowlarr.master.{{ prowlarr_version }}.linux-core-{{ prowlarr_arch }}.tar.gz"
+    dest: "/root/Prowlarr.master.{{ prowlarr_version }}.linux-core-{{ prowlarr_arch }}.tar.gz"
+    checksum: "{{ prowlarr_checksum[prowlarr_arch] }}"
+    owner: root
+    group: root
+    mode: "0600"
+  register: download_prowlarr_archive
+
+- name: Create /opt/prowlarr folder
+  become: true
+  ansible.builtin.file:
+    path: "/opt/prowlarr"
+    state: directory
+    owner: prowlarr
+    group: prowlarr
+    mode: "0500"
+
+- name: Create /opt/prowlarr/prowlarr-{{ prowlarr_version }} folder
+  become: true
+  ansible.builtin.file:
+    path: "/opt/prowlarr/prowlarr-{{ prowlarr_version }}"
+    state: directory
+    owner: prowlarr
+    group: prowlarr
+    mode: "0500"
+
+- name: Create /var/lib/prowlarr folder
+  become: true
+  ansible.builtin.file:
+    path: "/var/lib/prowlarr"
+    state: directory
+    owner: prowlarr
+    group: prowlarr
+    mode: "0700"
+
+- name: Decompress Prowlarr archive
+  become: true
+  ansible.builtin.unarchive:
+    src: "/root/Prowlarr.master.{{ prowlarr_version }}.linux-core-{{ prowlarr_arch }}.tar.gz"
+    dest: "/opt/prowlarr/prowlarr-{{ prowlarr_version }}"
+    remote_src: true
+    owner: prowlarr
+    group: prowlarr
+    extra_opts:
+      - --strip-components=1
+  when: download_prowlarr_archive.changed
+
+- name: Link latest Prowlarr version
+  become: true
+  ansible.builtin.file:
+    src: "/opt/prowlarr/prowlarr-{{ prowlarr_version }}"
+    dest: "/opt/prowlarr/prowlarr"
+    state: link
+
+- name: Configure Prowlarr
+  become: true
+  community.general.xml:
+    path: /var/lib/prowlarr/config.xml
+    xpath: "{{ item.key }}"
+    # string filter needed for the module to not use the values as booleans
+    value: "{{ item.value | string }}"
+  loop:
+    - key: /Config/LaunchBrowser
+      value: "False"
+    - key: /Config/AnalyticsEnabled
+      value: "False"
+    - key: /Config/UpdateAutomatically
+      value: "False"
+  notify: Restart Prowlarr
+
+- name: Copy UFW Prowlarr application configuration
+  become: true
+  ansible.builtin.copy:
+    src: ufw-prowlarr
+    dest: /etc/ufw/applications.d/nymous-prowlarr
+    owner: root
+    group: root
+    mode: "644"
+  notify: "Reload UFW"
+
+- name: Allow UFW Prowlarr application
+  become: true
+  community.general.ufw:
+    rule: allow
+    name: nymous-prowlarr
+
+- name: Copy Prowlarr systemd service
+  become: true
+  ansible.builtin.copy:
+    src: prowlarr.service
+    dest: /etc/systemd/system/prowlarr.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart Prowlarr
+
+- name: Start Prowlarr service
+  become: true
+  ansible.builtin.systemd_service:
+    name: prowlarr.service
+    state: started
+    enabled: true

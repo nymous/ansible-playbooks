@@ -1,0 +1,28 @@
+// {{ ansible_managed }}
+
+// Unattended-Upgrade::Origins-Pattern controls which packages are
+// upgraded.
+//
+// Lines below have the format "keyword=value,...".  A
+// package will be upgraded only if the values in its metadata match
+// all the supplied keywords in a line.  (In other words, omitted
+// keywords are wild cards.) The keywords originate from the Release
+// file, but several aliases are accepted.  The accepted keywords are:
+//   a,archive,suite (eg, "stable")
+//   c,component     (eg, "main", "contrib", "non-free")
+//   l,label         (eg, "Debian", "Debian-Security")
+//   o,origin        (eg, "Debian", "Unofficial Multimedia Packages")
+//   n,codename      (eg, "jessie", "jessie-updates")
+//     site          (eg, "http.debian.net")
+// The available values on the system are printed by the command
+// "apt-cache policy", and can be debugged by running
+// "unattended-upgrades -d" and looking at the log file.
+
+// $ apt-cache policy
+// Package files:
+//  500 https://packages.sury.org/php bookworm/main amd64 Packages
+//      release o=deb.sury.org,a=bookworm,n=bookworm,c=main,b=amd64
+//      origin packages.sury.org
+Unattended-Upgrade::Origins-Pattern {
+        "origin=deb.sury.org,codename=${distro_codename}";
+};

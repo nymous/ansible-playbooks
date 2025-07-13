@@ -36,6 +36,15 @@
       - bsd-mailx
     state: present
 
+
+- name: Configure Postfix listen address
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postfix/main.cf
+    regexp: "inet_interfaces ?="
+    line: "inet_interfaces = loopback-only"
+  notify: "Reload Postfix"
+
 # https://www.cyberciti.biz/faq/how-to-configure-postfix-relayhost-smarthost-to-send-email-using-an-external-smptd/
 - name: Configure Postfix relayhost authentication
   become: true

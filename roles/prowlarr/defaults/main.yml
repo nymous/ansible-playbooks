@@ -1,0 +1,11 @@
+prowlarr_version: "1.36.3.5071"
+# Map ansible_architecture to Prowlarr architecture names
+prowlarr_arch_mapping:
+  aarch64: arm64
+  x86_64: x64
+
+prowlarr_arch: "{{ prowlarr_arch_mapping[ansible_architecture] }}"
+# curl -L https://github.com/Prowlarr/Prowlarr/releases/download/v{{ prowlarr_version }}/Prowlarr.master.{{ prowlarr_version }}.linux-core-{{ prowlarr_arch }}.tar.gz | sha256sum
+prowlarr_checksum:
+  arm64: "sha256:bb083911cf4c0ba8cbc0d75ab85d6d8f681292159dca1bd69d44cbb7c3f5399c"
+  x64: "sha256:3742836fa32c18024a4a1e464a6eda89a9a37e51d15dbd3a7cbd4a3364f5f9b8"

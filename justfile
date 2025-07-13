@@ -6,6 +6,9 @@ default:
 playbook *ARGS:
     {{venv_path}}/ansible-playbook --inventory hosts playbook.yml {{ARGS}}
 
+pi *ARGS:
+    {{venv_path}}/ansible-playbook --inventory hosts pi-playbook.yml {{ARGS}}
+
 lint:
     {{venv_path}}/ansible-lint
 

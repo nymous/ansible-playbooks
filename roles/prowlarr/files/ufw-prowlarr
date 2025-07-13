@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+
+[nymous-prowlarr]
+title=Prowlarr (Tracker Indexer)
+description=The Ultimate Indexer Manager
+ports=9696/tcp

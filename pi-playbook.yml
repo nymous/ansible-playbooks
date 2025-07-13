@@ -1,0 +1,16 @@
+- name: Pi
+  hosts: pinkie
+  tasks:
+    - name: Disable unnecessary services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop:
+        - ModemManager.service
+        - wpa_supplicant.service
+  roles:
+    # - base
+    # - mail
+    - prowlarr
+    - unbound

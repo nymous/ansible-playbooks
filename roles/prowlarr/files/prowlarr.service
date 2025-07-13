@@ -1,0 +1,41 @@
+[Unit]
+Description=Prowlarr Daemon
+After=syslog.target network.target
+
+[Service]
+User=prowlarr
+Group=prowlarr
+Type=simple
+
+ExecStart=/opt/prowlarr/prowlarr/Prowlarr -nobrowser -data=/var/lib/prowlarr/
+TimeoutStopSec=20
+KillMode=process
+Restart=on-failure
+
+RuntimeDirectory=prowlarr
+
+CapabilityBoundingSet=
+LockPersonality=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateMounts=true
+PrivateTmp=true
+PrivateUsers=false
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+BindReadOnlyPaths=/opt/prowlarr
+ReadWritePaths=/var/lib/prowlarr
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

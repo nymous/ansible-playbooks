@@ -1,0 +1,32 @@
+- name: Install unbound
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - unbound
+      - unbound-host
+
+- name: Configure unbound
+  become: true
+  ansible.builtin.copy:
+    src: custom-can-reload.conf
+    dest: /etc/unbound/unbound.conf.d/custom-can-reload.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload Unbound
+
+- name: Configure systemd DNS to use local Unbound
+  become: true
+  community.general.nmcli:
+    conn_name: Wired connection 1
+    type: ethernet
+    dns4:
+      - 127.0.0.1
+    dns4_ignore_auto: true
+    dns6:
+      - "::1"
+    dns6_ignore_auto: true
+    state: present
+  notify: Reapply nmcli device configuration

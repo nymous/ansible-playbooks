@@ -14,8 +14,11 @@
 - name: Remove passwordless sudoer for non-existing user
   become: true
   ansible.builtin.file:
-    path: /etc/sudoers.d/90-cloud-init-users
+    path: "{{ item }}"
     state: absent
+  loop:
+    - /etc/sudoers.d/90-cloud-init-users
+    - /etc/sudoers.d/010_pi-nopasswd
 
 - name: "Install essentials"
   become: true
@@ -29,12 +32,20 @@
       - iftop
       - iotop
       - dnsutils
+      - unattended-upgrades
       - needrestart
       - acl # Useful to `become` another unprivileged user
       - logrotate
-      - lbzip2 # To decompress bz2 archives
-      - python3-psycopg2 # To manage PostgreSQL using Ansible
     state: present
+
+- name: Copy default vim config
+  become: true
+  ansible.builtin.copy:
+    src: vimrc
+    dest: /etc/vim/vimrc.local
+    owner: root
+    group: root
+    mode: "0644"
 
 - name: "Configure unattended-upgrades"
   become: true

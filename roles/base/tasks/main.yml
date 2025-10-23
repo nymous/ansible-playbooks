@@ -11,14 +11,23 @@
     marker: "# {mark} ANSIBLE HOSTNAME LOCALHOST"
     block: "127.0.0.1 {{ hostname }}"
 
-- name: Remove passwordless sudoer for non-existing user
+- name: Remove passwordless sudoer for non-existing user (OVH)
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
   loop:
     - /etc/sudoers.d/90-cloud-init-users
+  when: "'ovh' in group_names"
+
+- name: Remove passwordless sudoer for default user (Raspberry Pi)
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
     - /etc/sudoers.d/010_pi-nopasswd
+  when: "'raspberry_pi' in group_names"
 
 - name: "Install essentials"
   become: true
@@ -87,6 +96,7 @@
   register: motd
   changed_when: motd.rc != 0
   ignore_errors: true
+  check_mode: false  # Force task to run even in check mode
 
 - name: "Copy MOTD banner"
   become: true
@@ -102,3 +112,12 @@
     key: "{{ item }}"
     state: present
   loop: "{{ ssh_authorized_keys }}"
+
+- name: "Create folder for artifacts downloaded through Ansible"
+  become: true
+  ansible.builtin.file:
+    path: "{{ base_artifacts_download_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"

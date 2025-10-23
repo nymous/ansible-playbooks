@@ -5,11 +5,11 @@
     # - base
     # - firewall
     # - mosh
-    - wireguard
+    # - wireguard
     # - gitolite
     # - mail
     # - certbot
     # - nginx
     # - postgresql
     # - php
-    # - nextcloud
+    - nextcloud

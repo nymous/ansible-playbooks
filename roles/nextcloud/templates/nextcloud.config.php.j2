@@ -1,18 +1,19 @@
 <?php
 $CONFIG = array (
-  'instanceid' => 'a',
-  'passwordsalt' => 'a',
-  'secret' => 'a',
+  {% if not nextcloud_first_install %}'config_is_read_only' => true,{% endif %}
+  'version' => '{{ nextcloud_current_version_full }}',
+  'instanceid' => '{{ nextcloud_instance_id }}',
+  'passwordsalt' => '{{ nextcloud_password_salt }}',
+  'secret' => '{{ nextcloud_secret }}',
   'trusted_domains' =>
   array (
-    0 => 'nextcloud.example.com',
+    0 => '{{ nextcloud_hostname }}',
   ),
   'htaccess.RewriteBase' => '/',
   'datadirectory' => '{{ nextcloud_data_directory }}',
   'logfile' => '{{ nextcloud_log_directory }}/nextcloud.log',
   'dbtype' => 'pgsql',
-  'version' => '29.0.6.1',
-  'overwrite.cli.url' => 'https://nextcloud.example.com',
+  'overwrite.cli.url' => 'https://{{ nextcloud_hostname }}',
   'dbname' => 'nextcloud',
   'dbhost' => '/run/postgresql',
   'dbtableprefix' => 'oc_',
@@ -30,6 +31,10 @@ $CONFIG = array (
       'writable' => true,
     ],
   ],
+  // Run non-time sensitive background jobs between 01:00am UTC and 05:00am UTC
+  'maintenance_window_start' => 1,
+  'preview_concurrency_new' => 2,
+  'preview_concurrency_all' => 4,
 );
 
 

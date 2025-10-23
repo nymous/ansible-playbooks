@@ -1,3 +1,17 @@
+# TODO: re-enable this check
+- name: Check if we Nextcloud code is already uncompressed
+  become: true
+  ansible.builtin.stat:
+    path: "{{ nextcloud_code_directory }}/version.php"
+  register: version_php
+
+# - name: Prevent overriding an existing installation
+#   ansible.builtin.fail:
+#     msg: Nextcloud seems already installed! Please set `nextcloud_first_install` to false or delete the current installation.
+#   when:
+#     - nextcloud_first_install
+#     - version_php.stat.exists
+
 - name: Create Nextcloud user
   become: true
   ansible.builtin.user:
@@ -67,11 +81,42 @@
 #   ansible.builtin.command:
 #     cmd: gpg --import /tmp/nextcloud.asc
 
+- name: Retrieve full 4-digit Nextcloud version
+  become: true
+  become_user: nextcloud
+  ansible.builtin.command:
+    cmd: php --run "require 'version.php'; echo implode('.', $OC_Version);"
+    chdir: "{{ nextcloud_code_directory }}"
+  register: nextcloud_current_version
+  changed_when: false
+  check_mode: false  # Force task to run even in check mode
+  when: version_php.stat.exists
+
+- name: Set current Nextcloud version as fact
+  ansible.builtin.set_fact:
+    nextcloud_current_version_full: "{{ nextcloud_current_version.stdout }}"
+    nextcloud_current_version_short: "{{ (nextcloud_current_version.stdout | split('.'))[:3] | join('.') }}"
+  when: version_php.stat.exists
+
+- name: Prevent downgrading Nextcloud
+  ansible.builtin.fail:
+    msg: Trying to downgrade Nextcloud from {{ nextcloud_current_version_short }} to {{ nextcloud_version }}
+  when:
+    - version_php.stat.exists
+    - nextcloud_version is ansible.builtin.version(nextcloud_current_version_short, "<")
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: |-
+      nextcloud_version: {{ nextcloud_version }}
+      nextcloud_current_version_full: {{ nextcloud_current_version_full }}
+      nextcloud_current_version_short: {{ nextcloud_current_version_short }}
+
 - name: Download Nextcloud archive
   become: true
   ansible.builtin.get_url:
     url: "{{ nextcloud_archive_download_url }}"
-    dest: /tmp/nextcloud-{{ nextcloud_version }}.tar.bz2
+    dest: "{{ base_artifacts_download_path }}/nextcloud-{{ nextcloud_version }}.tar.bz2"
     checksum: "{{ nextcloud_archive_checksum }}"
     owner: root
     group: root
@@ -81,24 +126,25 @@
   become: true
   ansible.builtin.unarchive:
     remote_src: true
-    src: /tmp/nextcloud-{{ nextcloud_version }}.tar.bz2
+    src: "{{ base_artifacts_download_path }}/nextcloud-{{ nextcloud_version }}.tar.bz2"
     dest: "{{ nextcloud_code_directory }}"
     owner: nextcloud
     group: www-data
     extra_opts:
       - --strip-components=1
+  when: nextcloud_current_version_short is ansible.builtin.version(nextcloud_version, "<")
 
-- name: Delete Nextcloud archive
-  become: true
-  ansible.builtin.file:
-    path: /tmp/nextcloud-{{ nextcloud_version }}.tar.bz2
-    state: absent
+# - name: Delete Nextcloud archive
+#   become: true
+#   ansible.builtin.file:
+#     path: /tmp/nextcloud-{{ nextcloud_version }}.tar.bz2
+#     state: absent
 
 - name: Copy Nextcloud configuration
   become: true
   ansible.builtin.template:
     src: nextcloud.config.php.j2
-    dest: "{{ nextcloud_config_directory }}/config.php"
+    dest: "{{ nextcloud_config_directory }}/override.config.php"
     owner: nextcloud
     group: www-data
     mode: "660"
@@ -126,18 +172,18 @@
     access_time: preserve
   when: nextcloud_first_install
 
-# - name: Test if Nextcloud config directory links to /etc
-#   become: true
-#   ansible.builtin.stat:
-#     path: "{{ nextcloud_code_directory }}/config"
-#   register: config_dir_stat
+- name: Test if Nextcloud config directory links to /etc
+  become: true
+  ansible.builtin.stat:
+    path: "{{ nextcloud_code_directory }}/config"
+  register: config_dir_stat
 
-# - name: Delete existing Nextcloud config directory
-#   become: true
-#   ansible.builtin.file:
-#     path: "{{ nextcloud_code_directory }}/config"
-#     state: absent
-#   when: not (config_dir_stat.stat.islnk and config_dir_stat.stat.lnk_source == nextcloud_config_directory)
+- name: Delete existing Nextcloud config directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ nextcloud_code_directory }}/config"
+    state: absent
+  when: (not config_dir_stat.stat.islnk) or (config_dir_stat.stat.lnk_source != nextcloud_config_directory)
 
 - name: Link Nextcloud configuration
   become: true
@@ -147,7 +193,7 @@
     state: link
     owner: nextcloud
     group: www-data
-  # when: not (config_dir_stat.stat.islnk and config_dir_stat.stat.lnk_source == nextcloud_config_directory)
+  when: (not config_dir_stat.stat.islnk) or (config_dir_stat.stat.lnk_source != nextcloud_config_directory)
 
 - name: Link Nextcloud extra apps
   become: true
@@ -166,7 +212,7 @@
     password: "{{ nextcloud_db_password }}"
     role_attr_flags: NOSUPERUSER
 
-- name: Create Nextcloud PostgreSQL user
+- name: Create Nextcloud PostgreSQL database
   become: true
   become_user: postgres
   community.postgresql.postgresql_db:
@@ -179,8 +225,6 @@
     update_cache: true
     cache_valid_time: 3600
     name:
-      - lbzip2 # To decompress Nextcloud bz2 archive
-      - python3-psycopg2 # To manage PostgreSQL using Ansible
       - ffmpeg
       - php{{ nextcloud_php_version }}-apcu
       - php{{ nextcloud_php_version }}-curl

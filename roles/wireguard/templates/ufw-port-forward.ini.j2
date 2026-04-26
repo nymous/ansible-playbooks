@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+
+[nymous-port-forward-{{ peer.name | regex_replace("[^A-Za-z0-9-_]", "") }}]
+title={{ peer.name }} (Port Forward)
+description=Allow forwarded ports for {{ peer.name }} on WireGuard network
+ports={% for rule in peer.portForwardingRules %}{{ rule.port }}/{{rule.protocol }}{{ "|" if not loop.last else "" }}{% endfor %}

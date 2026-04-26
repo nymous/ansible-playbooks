@@ -37,7 +37,7 @@
 - name: Copy UFW WireGuard application configuration
   become: true
   ansible.builtin.template:
-    src: ufw-wireguard.j2
+    src: ufw-wireguard.ini.j2
     dest: /etc/ufw/applications.d/nymous-wg
     owner: root
     group: root
@@ -77,7 +77,16 @@
     block: |
       # NAT table rules
       *nat
+      :PREROUTING ACCEPT [0:0]
+      # DNAT incoming traffic (public > private)
+      {% for peer in wireguard.peers | default([]) %}
+      {% for portForwarding in peer.portForwardingRules | default([]) %}
+      -A PREROUTING -i ens3 -p {{ portForwarding.protocol }} --dport {{ portForwarding.publicPort | default(portForwarding.port) }} -j DNAT --to-destination {{ peer.allowedIps[0] | split('/') | first }}:{{ portForwarding.port }} -m comment --comment {{ portForwarding.comment | to_json }}
+      {% endfor %}
+      {% endfor %}
+
       :POSTROUTING ACCEPT [0:0]
+      # Masquerade outgoing traffic (private > public)
       {% for address in wireguard.addresses %}
       -A POSTROUTING -s {{ address }} -o ens3 -j MASQUERADE
       {% endfor %}
@@ -91,3 +100,45 @@
     search_string: "net/ipv4/ip_forward=1"
     line: "net/ipv4/ip_forward=1"
   notify: "Reload UFW"
+
+- name: Copy UFW port forward application configuration
+  become: true
+  ansible.builtin.template:
+    src: ufw-port-forward.ini.j2
+    dest: /etc/ufw/applications.d/nymous-port-forward-{{ peer.name | regex_replace("[^A-Za-z0-9-_]", "") }}
+    owner: root
+    group: root
+    mode: "644"
+  notify: "Reload UFW"
+  loop: "{{ wireguard.peers }}"
+  loop_control:
+    loop_var: peer
+    label: "{{ peer.name }}"
+  when: peer.portForwardingRules | default([]) | length > 0
+
+- name: Allow UFW port forward application
+  become: true
+  community.general.ufw:
+    rule: allow
+    name: nymous-port-forward-{{ peer.name | regex_replace("[^A-Za-z0-9-_]", "") }}
+  loop: "{{ wireguard.peers }}"
+  loop_control:
+    loop_var: peer
+    label: "{{ peer.name }}"
+  when: peer.portForwardingRules | default([]) | length > 0
+
+- name: Allow port forwarding through WireGuard
+  become: true
+  community.general.ufw:
+    route: true
+    rule: allow
+    interface_in: ens3
+    interface_out: wg0
+    to_ip: "{{ peer.0.allowedIps[0] | split('/') | first }}"
+    to_port: "{{ peer.1.publicPort | default(peer.1.port) }}"
+    proto: "{{ peer.1.protocol }}"
+    comment: "{{ peer.1.comment }}"
+  loop: "{{ wireguard.peers | subelements('portForwardingRules', skip_missing=True) }}"
+  loop_control:
+    loop_var: peer
+    label: "{{ peer.0.name }} @ {{ peer.1.publicPort | default(peer.1.port) }}/{{ peer.1.protocol }}"
